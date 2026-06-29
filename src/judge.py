@@ -6,8 +6,6 @@ decides s_{t,r} for each browser-agent run.
 """
 from __future__ import annotations
 
-from google import genai
-
 import config
 
 _PROMPT = """You are evaluating whether a web-browsing agent completed a task.
@@ -26,12 +24,21 @@ Respond with exactly one word on the first line: SUCCESS or FAILURE.
 
 def judge(ques: str, reference: str, answer: str) -> int:
     """Return 1 if the run is judged a success, else 0."""
-    client = genai.Client(api_key=config.GOOGLE_API_KEY)
-    resp = client.models.generate_content(
-        model=config.JUDGE_MODEL,
-        contents=_PROMPT.format(
-            ques=ques, reference=reference, answer=answer or "(no answer)"
-        ),
-    )
-    verdict = (resp.text or "").strip().upper()
+    prompt = _PROMPT.format(ques=ques, reference=reference, answer=answer or "(no answer)")
+
+    if config.PROVIDER == "anthropic":
+        import anthropic
+        client = anthropic.Anthropic(api_key=config.API_KEY)
+        resp = client.messages.create(
+            model=config.JUDGE_MODEL,
+            max_tokens=16,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        verdict = resp.content[0].text.strip().upper()
+    else:
+        from google import genai
+        client = genai.Client(api_key=config.API_KEY)
+        resp = client.models.generate_content(model=config.JUDGE_MODEL, contents=prompt)
+        verdict = (resp.text or "").strip().upper()
+
     return 1 if verdict.startswith("SUCCESS") else 0

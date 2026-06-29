@@ -5,9 +5,11 @@ measures the **run-to-run reliability** of a DOM-based browser agent by running
 each task many times and comparing the leaderboard-style mean success rate
 against the rate of tasks solved *reliably*.
 
-It uses [Browser Use](https://github.com/browser-use/browser-use) driven by
-Gemini, on a small slice of WebVoyager-style tasks. (The OSWorld desktop-agent
-half from the report is intentionally **not** built here.)
+It uses [Browser Use](https://github.com/browser-use/browser-use) on a small
+slice of WebVoyager-style tasks. The backbone is configurable via `PROVIDER`:
+**Anthropic** (default, cheapest model Claude Haiku 4.5) or **Gemini** (the
+report's backbone). (The OSWorld desktop-agent half from the report is
+intentionally **not** built here.)
 
 ## What it computes
 
@@ -29,7 +31,7 @@ cd browser-reliability
 python -m venv .venv && source .venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
 playwright install chromium                              # browser for Browser Use
-cp .env.example .env                                     # then add your GOOGLE_API_KEY
+cp .env.example .env                                     # then add your ANTHROPIC_API_KEY
 ```
 
 > Browser Use targets Python 3.11–3.13. If install fails on a newer interpreter,

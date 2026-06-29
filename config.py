@@ -12,11 +12,22 @@ load_dotenv()
 
 ROOT = Path(__file__).parent
 
-# --- Model -----------------------------------------------------------------
-# The report uses "Gemini 3.5 Flash". Set the exact id your key has access to.
+# --- Model / provider ------------------------------------------------------
+# Which LLM backbone drives the agent and the judge: "anthropic" or "gemini".
+PROVIDER = os.getenv("PROVIDER", "anthropic").lower()
+
+# Anthropic (default). Cheapest current Claude model is Haiku 4.5.
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Gemini (the report's backbone). Set the exact id your key can access.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-JUDGE_MODEL = os.getenv("JUDGE_MODEL", GEMINI_MODEL)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
+# Resolved per-provider model id used for both agent and judge.
+AGENT_MODEL = ANTHROPIC_MODEL if PROVIDER == "anthropic" else GEMINI_MODEL
+JUDGE_MODEL = os.getenv("JUDGE_MODEL", AGENT_MODEL)
+API_KEY = ANTHROPIC_API_KEY if PROVIDER == "anthropic" else GOOGLE_API_KEY
 
 # --- Experiment ------------------------------------------------------------
 TASKS_PATH = Path(os.getenv("TASKS_PATH", ROOT / "tasks" / "webvoyager_slice.jsonl"))

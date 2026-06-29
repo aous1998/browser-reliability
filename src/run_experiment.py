@@ -42,9 +42,18 @@ def load_tasks(path: Path) -> list[dict]:
     return tasks
 
 
+def _agent_llm():
+    """Build the Browser Use chat model for the configured provider."""
+    if config.PROVIDER == "anthropic":
+        from browser_use import ChatAnthropic
+        return ChatAnthropic(model=config.AGENT_MODEL, api_key=config.API_KEY)
+    from browser_use import ChatGoogle
+    return ChatGoogle(model=config.AGENT_MODEL, api_key=config.API_KEY)
+
+
 async def run_once(task: dict) -> str:
     """Run the Browser Use agent on one task; return its final answer text."""
-    from browser_use import Agent, BrowserProfile, ChatGoogle
+    from browser_use import Agent, BrowserProfile
 
     prompt = (
         f"Open {task['web']} and complete this task: {task['ques']} "
@@ -52,7 +61,7 @@ async def run_once(task: dict) -> str:
     )
     agent = Agent(
         task=prompt,
-        llm=ChatGoogle(model=config.GEMINI_MODEL, api_key=config.GOOGLE_API_KEY),
+        llm=_agent_llm(),
         browser_profile=BrowserProfile(headless=config.HEADLESS),
     )
     history = await agent.run(max_steps=config.MAX_STEPS)
@@ -89,8 +98,9 @@ async def main() -> None:
     except Exception:
         pass
 
-    if not config.GOOGLE_API_KEY:
-        sys.exit("GOOGLE_API_KEY is not set. Copy .env.example to .env and add your key.")
+    if not config.API_KEY:
+        key_name = "ANTHROPIC_API_KEY" if config.PROVIDER == "anthropic" else "GOOGLE_API_KEY"
+        sys.exit(f"{key_name} is not set. Copy .env.example to .env and add your key.")
 
     config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     tasks = load_tasks(config.TASKS_PATH)
@@ -131,7 +141,8 @@ async def main() -> None:
                  "Check your API quota/billing, then re-run.")
 
     summary = metrics.summarize(valid_tasks, config.TAU)
-    summary["model"] = config.GEMINI_MODEL
+    summary["provider"] = config.PROVIDER
+    summary["model"] = config.AGENT_MODEL
     summary["k"] = config.K
     summary["invalid_runs_excluded"] = invalid_runs
     summary["tasks_dropped_no_valid_runs"] = dropped
