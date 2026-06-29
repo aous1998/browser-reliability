@@ -1,0 +1,3 @@
+{"id": "smoke-example-1", "web_name": "Example", "web": "https://example.com", "ques": "Go to example.com and report the exact text of the main heading on the page.", "reference_answer": "Example Domain"}
+{"id": "smoke-wiki-eiffel", "web_name": "Wikipedia", "web": "https://en.wikipedia.org/wiki/Eiffel_Tower", "ques": "On the Wikipedia article for the Eiffel Tower, find the year in which its construction was completed.", "reference_answer": "1889"}
+{"id": "smoke-wiki-oxygen", "web_name": "Wikipedia", "web": "https://en.wikipedia.org/wiki/Oxygen", "ques": "On the Wikipedia article for Oxygen, find the atomic number of the element.", "reference_answer": "8"}
