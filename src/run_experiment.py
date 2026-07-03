@@ -102,6 +102,8 @@ async def run_once(task: dict) -> str:
         # LLM call fail with 400 "does not support multimodal requests".
         # DOM-only observation is also what the study measures.
         use_vision=(config.PROVIDER != "ollama"),
+        llm_timeout=(config.OLLAMA_LLM_TIMEOUT_S if config.PROVIDER == "ollama" else None),
+        step_timeout=(config.OLLAMA_LLM_TIMEOUT_S + 120 if config.PROVIDER == "ollama" else 180),
     )
     history = await agent.run(max_steps=config.MAX_STEPS)
     return history.final_result() or ""

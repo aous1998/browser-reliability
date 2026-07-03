@@ -33,6 +33,10 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 # task entirely (see results/runs_20260630T202223Z.jsonl: every answer chases a
 # phantom task from the truncated system prompt's worked example).
 OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "16384"))
+# Browser Use's default per-call LLM timeout (75 s) is too tight for a local
+# model whose KV cache spills to CPU at this context size; every call times out
+# and the run aborts. Give local calls more headroom.
+OLLAMA_LLM_TIMEOUT_S = int(os.getenv("OLLAMA_LLM_TIMEOUT_S", "300"))
 
 # Resolved per-provider model id and credential used for both agent and judge.
 if PROVIDER == "anthropic":
