@@ -60,7 +60,7 @@ on moderately complex tasks.
   place.
 - Pass criteria: the final answer addresses the asked task (no phantom task);
   per-run wall clock noted.
-- If a run exceeds ~12 minutes, reduce k from 5 to 4 to stay inside budget.
+- Per-run wall clock informs the total-time estimate for the 12-run experiment.
 - Only after the gate passes does the full experiment start.
 
 ### 3. Task slice (`tasks/webvoyager_slice.jsonl`, replaced)
@@ -83,7 +83,10 @@ genuine two-hop navigation without being fragile.
 - Agent: qwen3:8b, temperature 1.0 (sampling variance is the phenomenon),
   think off, headless, 25-step budget.
 - Judge: qwen3:8b, temperature 0, reference answers as above.
-- k=5, N=4 → 20 runs, executed in background with progress logging.
+- k=3, N=4 → 12 runs, executed in background with progress logging.
+  (k=3 keeps the experiment short at the cost of coarse per-task estimates:
+  p̂ can only take the values 0, 1/3, 2/3, 1 — stated as a limitation in the
+  report.)
 - Outputs land in `results/` via the existing pipeline; metrics code
   untouched.
 
@@ -102,7 +105,7 @@ genuine two-hop navigation without being fragile.
 ## Error handling
 
 - Ollama connection errors → infra-marker retry/exclusion path.
-- A task scoring 0/5 or 5/5 is a valid result; the difficulty mix makes an
+- A task scoring 0/3 or 3/3 is a valid result; the difficulty mix makes an
   all-flat outcome across all four tasks unlikely.
 - If the smoke gate fails even at 24576 ctx, stop and reassess (fallbacks:
   gemma4 despite CPU offload, or think mode on) rather than burn the budget.
@@ -115,7 +118,7 @@ genuine two-hop navigation without being fragile.
 ## Success criteria
 
 - Smoke gate: real task attempted, no phantom answer.
-- Full run: 20 valid runs, summary produced, ideally some per-task p̂ strictly
+- Full run: 12 valid runs, summary produced, ideally some per-task p̂ strictly
   between 0 and 1 (not guaranteed; an honest flat result is still reportable).
 - Report: compiles, all content consistent with the new logged numbers, no
   remaining references to Claude Haiku or the trivial task slice.
