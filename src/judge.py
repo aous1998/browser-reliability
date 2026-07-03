@@ -32,13 +32,29 @@ def judge(ques: str, reference: str, answer: str) -> int:
         resp = client.messages.create(
             model=config.JUDGE_MODEL,
             max_tokens=16,
+            temperature=config.JUDGE_TEMPERATURE,
             messages=[{"role": "user", "content": prompt}],
         )
         verdict = resp.content[0].text.strip().upper()
+    elif config.PROVIDER == "ollama":
+        import ollama
+        client = ollama.Client(host=config.OLLAMA_HOST)
+        resp = client.chat(
+            model=config.JUDGE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            think=False,  # top-level API param; inside options= it is ignored
+            options={"temperature": config.JUDGE_TEMPERATURE},
+        )
+        verdict = resp["message"]["content"].strip().upper()
     else:
         from google import genai
+        from google.genai import types
         client = genai.Client(api_key=config.API_KEY)
-        resp = client.models.generate_content(model=config.JUDGE_MODEL, contents=prompt)
+        resp = client.models.generate_content(
+            model=config.JUDGE_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=config.JUDGE_TEMPERATURE),
+        )
         verdict = (resp.text or "").strip().upper()
 
     return 1 if verdict.startswith("SUCCESS") else 0

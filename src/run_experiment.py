@@ -76,11 +76,10 @@ def _agent_llm():
         return ChatAnthropic(model=config.AGENT_MODEL, api_key=config.API_KEY,
                              temperature=config.AGENT_TEMPERATURE)
     if config.PROVIDER == "ollama":
-        from browser_use import ChatOllama
-        return ChatOllama(model=config.AGENT_MODEL, host=config.OLLAMA_HOST,
-                          ollama_options={"temperature": config.AGENT_TEMPERATURE,
-                                          "think": False,
-                                          "num_ctx": config.OLLAMA_NUM_CTX})
+        from src.local_llm import ThinklessChatOllama
+        return ThinklessChatOllama(model=config.AGENT_MODEL, host=config.OLLAMA_HOST,
+                                   ollama_options={"temperature": config.AGENT_TEMPERATURE,
+                                                   "num_ctx": config.OLLAMA_NUM_CTX})
     from browser_use import ChatGoogle
     return ChatGoogle(model=config.AGENT_MODEL, api_key=config.API_KEY,
                       temperature=config.AGENT_TEMPERATURE)
