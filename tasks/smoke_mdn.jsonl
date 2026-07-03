@@ -1,0 +1,1 @@
+{"id": "wv-mdn-flex", "web_name": "MDN", "web": "https://developer.mozilla.org", "ques": "On developer.mozilla.org, find the documentation for the CSS 'flex' property and report the three sub-properties (longhands) it is a shorthand for.", "reference_answer": "flex-grow, flex-shrink, flex-basis"}
