@@ -98,6 +98,10 @@ async def run_once(task: dict) -> str:
         task=prompt,
         llm=_agent_llm(),
         browser_profile=BrowserProfile(headless=config.HEADLESS),
+        # Local Ollama models are text-only; sending screenshots makes every
+        # LLM call fail with 400 "does not support multimodal requests".
+        # DOM-only observation is also what the study measures.
+        use_vision=(config.PROVIDER != "ollama"),
     )
     history = await agent.run(max_steps=config.MAX_STEPS)
     return history.final_result() or ""
