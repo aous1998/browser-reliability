@@ -16,20 +16,43 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Markers of a transient infrastructure failure (API down / rate limited), as
-# opposed to the agent genuinely failing the task.
-_INFRA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "503", "UNAVAILABLE", "DeadlineExceeded")
-
-
-def is_infra_error(exc: Exception) -> bool:
-    return any(m in str(exc) for m in _INFRA_MARKERS)
-
 # Allow `python src/run_experiment.py` as well as `-m src.run_experiment`.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
 from src import metrics
 from src.judge import judge
+
+# Markers of a transient infrastructure failure (API down / rate limited), as
+# opposed to the agent genuinely failing the task.
+_INFRA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "503", "UNAVAILABLE", "DeadlineExceeded",
+                  "connection refused", "ConnectError", "ReadTimeout", "timed out",
+                  "WinError 10061")
+# Markers of an exhausted/billing-blocked account. These are not transient and not
+# agent failures: retrying is futile and counting them as task failures corrupts the
+# metrics, so we abort the whole experiment when one appears.
+_BILLING_MARKERS = ("credit balance is too low", "billing", "insufficient_quota",
+                    "exceeded your current quota")
+
+
+class CreditExhausted(RuntimeError):
+    """The model API account is out of credit; abort rather than log bogus failures."""
+
+
+def is_billing_error(exc: Exception) -> bool:
+    return any(m.lower() in str(exc).lower() for m in _BILLING_MARKERS)
+
+
+def is_infra_error(exc: Exception) -> bool:
+    return any(m in str(exc) for m in _INFRA_MARKERS)
+
+
+def _browser_use_version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        return version("browser-use")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def load_tasks(path: Path) -> list[dict]:
@@ -45,10 +68,22 @@ def load_tasks(path: Path) -> list[dict]:
 def _agent_llm():
     """Build the Browser Use chat model for the configured provider."""
     if config.PROVIDER == "anthropic":
+        if config.REPAIR_TOOL_CALLS:
+            from src.repair_llm import RepairingChatAnthropic
+            return RepairingChatAnthropic(model=config.AGENT_MODEL, api_key=config.API_KEY,
+                                          temperature=config.AGENT_TEMPERATURE)
         from browser_use import ChatAnthropic
-        return ChatAnthropic(model=config.AGENT_MODEL, api_key=config.API_KEY)
+        return ChatAnthropic(model=config.AGENT_MODEL, api_key=config.API_KEY,
+                             temperature=config.AGENT_TEMPERATURE)
+    if config.PROVIDER == "ollama":
+        from browser_use import ChatOllama
+        return ChatOllama(model=config.AGENT_MODEL, host=config.OLLAMA_HOST,
+                          ollama_options={"temperature": config.AGENT_TEMPERATURE,
+                                          "think": False,
+                                          "num_ctx": config.OLLAMA_NUM_CTX})
     from browser_use import ChatGoogle
-    return ChatGoogle(model=config.AGENT_MODEL, api_key=config.API_KEY)
+    return ChatGoogle(model=config.AGENT_MODEL, api_key=config.API_KEY,
+                      temperature=config.AGENT_TEMPERATURE)
 
 
 async def run_once(task: dict) -> str:
@@ -80,6 +115,8 @@ async def attempt_run(task: dict) -> tuple[str, int | None]:
             outcome = judge(task["ques"], task.get("reference_answer", ""), answer)
             return answer, outcome
         except Exception as exc:
+            if is_billing_error(exc):
+                raise CreditExhausted(str(exc)) from exc
             if is_infra_error(exc) and attempt < config.INFRA_RETRIES:
                 print(f"    infra error, retry in {config.INFRA_BACKOFF_S:.0f}s "
                       f"({attempt + 1}/{config.INFRA_RETRIES})", flush=True)
@@ -110,7 +147,8 @@ async def main() -> None:
     per_task_outcomes: dict[str, list[int]] = {}
     invalid_runs = 0
 
-    with open(runs_path, "w", encoding="utf-8") as runs_file:
+    try:
+      with open(runs_path, "w", encoding="utf-8") as runs_file:
         for task in tasks:
             tid = task["id"]
             per_task_outcomes[tid] = []
@@ -132,6 +170,13 @@ async def main() -> None:
                 runs_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                 runs_file.flush()
                 print(f"[{tid}] run {r + 1} -> {label}")
+    except CreditExhausted as exc:
+        sys.exit(
+            f"\nAborted: the Anthropic API account is out of credit ({exc}).\n"
+            "Partial raw runs were written but no summary was produced, so the "
+            "credit error is never recorded as a task failure. Top up billing at "
+            "https://console.anthropic.com/settings/billing and re-run."
+        )
 
     # Drop tasks that produced no valid runs at all (cannot estimate p_hat).
     valid_tasks = {t: o for t, o in per_task_outcomes.items() if o}
@@ -141,9 +186,19 @@ async def main() -> None:
                  "Check your API quota/billing, then re-run.")
 
     summary = metrics.summarize(valid_tasks, config.TAU)
+    # Reproducibility block (report, Appendix A).
     summary["provider"] = config.PROVIDER
     summary["model"] = config.AGENT_MODEL
+    summary["judge_model"] = config.JUDGE_MODEL
     summary["k"] = config.K
+    summary["agent_temperature"] = config.AGENT_TEMPERATURE
+    summary["judge_temperature"] = config.JUDGE_TEMPERATURE
+    summary["max_steps"] = config.MAX_STEPS
+    summary["browser_use_version"] = _browser_use_version()
+    summary["repair_tool_calls"] = config.REPAIR_TOOL_CALLS
+    if config.REPAIR_TOOL_CALLS and config.PROVIDER == "anthropic":
+        from src.repair_llm import STATS as repair_stats
+        summary["tool_call_repair"] = dict(repair_stats)
     summary["invalid_runs_excluded"] = invalid_runs
     summary["tasks_dropped_no_valid_runs"] = dropped
     summary["timestamp"] = stamp
