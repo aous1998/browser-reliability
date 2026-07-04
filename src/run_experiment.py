@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
 from src import metrics
-from src.judge import judge
+from src.judge import judge, string_judge
 
 # Markers of a transient infrastructure failure (API down / rate limited), as
 # opposed to the agent genuinely failing the task.
@@ -85,8 +86,46 @@ def _agent_llm():
                       temperature=config.AGENT_TEMPERATURE)
 
 
-async def run_once(task: dict) -> str:
-    """Run the Browser Use agent on one task; return its final answer text."""
+def _trajectory_stats(history) -> dict:
+    """Extract per-run trajectory instrumentation from an AgentHistoryList.
+
+    Per step: index, duration (dominated by LLM inference for local models),
+    the page URL the step observed, the action names taken, and any error.
+    This is the raw material for the "why do runs diverge" analysis; every
+    field is measured, not judged.
+    """
+    steps = []
+    for h in history.history:
+        entry: dict = {}
+        md = getattr(h, "metadata", None)
+        if md is not None:
+            entry["n"] = md.step_number
+            entry["duration_s"] = round(md.duration_seconds, 2)
+        state = getattr(h, "state", None)
+        if state is not None and getattr(state, "url", None):
+            entry["url"] = state.url
+        out = getattr(h, "model_output", None)
+        if out is not None and getattr(out, "action", None):
+            names: list[str] = []
+            for a in out.action:
+                try:
+                    names.extend(a.model_dump(exclude_unset=True, exclude_none=True).keys())
+                except Exception:
+                    pass
+            entry["actions"] = names
+        errors = [r.error for r in (h.result or []) if getattr(r, "error", None)]
+        if errors:
+            entry["error"] = str(errors[0])[:200]
+        steps.append(entry)
+    return {
+        "n_steps": history.number_of_steps(),
+        "agent_steps_duration_s": round(history.total_duration_seconds(), 2),
+        "steps": steps,
+    }
+
+
+async def run_once(task: dict) -> tuple[str, dict]:
+    """Run the agent on one task; return (final answer, trajectory stats)."""
     from browser_use import Agent, BrowserProfile
 
     prompt = (
@@ -104,21 +143,32 @@ async def run_once(task: dict) -> str:
         llm_timeout=(config.OLLAMA_LLM_TIMEOUT_S if config.PROVIDER == "ollama" else None),
         step_timeout=(config.OLLAMA_LLM_TIMEOUT_S + 120 if config.PROVIDER == "ollama" else 180),
     )
+    t0 = time.monotonic()
     history = await agent.run(max_steps=config.MAX_STEPS)
-    return history.final_result() or ""
+    stats = _trajectory_stats(history)
+    stats["duration_s"] = round(time.monotonic() - t0, 2)  # incl. browser startup
+    return history.final_result() or "", stats
 
 
-async def attempt_run(task: dict) -> tuple[str, int | None]:
+def judge_answer(task: dict, answer: str) -> int:
+    """Score an answer with the configured judge (string default, llm fallback)."""
+    reference = task.get("reference_answer", "")
+    if config.JUDGE_MODE == "string" and reference:
+        return string_judge(reference, answer, task.get("reference_parts"))
+    return judge(task["ques"], reference, answer)
+
+
+async def attempt_run(task: dict) -> tuple[str, int | None, dict]:
     """Run + judge one attempt, retrying transient infra errors.
 
-    Returns (answer, outcome) where outcome is 1 (success), 0 (genuine task
-    failure), or None (invalid: persistent infra/quota error -> excluded).
+    Returns (answer, outcome, stats) where outcome is 1 (success), 0 (genuine
+    task failure), or None (invalid: persistent infra error -> excluded).
     """
     for attempt in range(config.INFRA_RETRIES + 1):
         try:
-            answer = await run_once(task)
-            outcome = judge(task["ques"], task.get("reference_answer", ""), answer)
-            return answer, outcome
+            answer, stats = await run_once(task)
+            outcome = judge_answer(task, answer)
+            return answer, outcome, stats
         except Exception as exc:
             if is_billing_error(exc):
                 raise CreditExhausted(str(exc)) from exc
@@ -128,8 +178,8 @@ async def attempt_run(task: dict) -> tuple[str, int | None]:
                 await asyncio.sleep(config.INFRA_BACKOFF_S)
                 continue
             if is_infra_error(exc):
-                return f"INVALID (infra): {exc}", None
-            return f"ERROR: {exc}", 0  # genuine failure (agent crashed)
+                return f"INVALID (infra): {exc}", None, {}
+            return f"ERROR: {exc}", 0, {}  # genuine failure (agent crashed)
 
 
 async def main() -> None:
@@ -159,7 +209,7 @@ async def main() -> None:
             per_task_outcomes[tid] = []
             for r in range(config.K):
                 print(f"[{tid}] run {r + 1}/{config.K} ...", flush=True)
-                answer, outcome = await attempt_run(task)  # outcome: 1, 0, or None
+                answer, outcome, stats = await attempt_run(task)  # outcome: 1, 0, or None
                 if outcome is None:
                     invalid_runs += 1
                     label = "INVALID (infra/quota, excluded)"
@@ -171,10 +221,16 @@ async def main() -> None:
                     "run": r,
                     "success": outcome,  # null = excluded from metrics
                     "answer": answer,
+                    "n_steps": stats.get("n_steps"),
+                    "duration_s": stats.get("duration_s"),
+                    "agent_steps_duration_s": stats.get("agent_steps_duration_s"),
+                    "steps": stats.get("steps", []),
                 }
                 runs_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                 runs_file.flush()
-                print(f"[{tid}] run {r + 1} -> {label}")
+                timing = (f"  ({stats['n_steps']} steps, {stats['duration_s']:.0f}s)"
+                          if stats.get("n_steps") is not None else "")
+                print(f"[{tid}] run {r + 1} -> {label}{timing}")
     except CreditExhausted as exc:
         sys.exit(
             f"\nAborted: the Anthropic API account is out of credit ({exc}).\n"
@@ -194,6 +250,7 @@ async def main() -> None:
     # Reproducibility block (report, Appendix A).
     summary["provider"] = config.PROVIDER
     summary["model"] = config.AGENT_MODEL
+    summary["judge_mode"] = config.JUDGE_MODE
     summary["judge_model"] = config.JUDGE_MODEL
     summary["k"] = config.K
     summary["agent_temperature"] = config.AGENT_TEMPERATURE

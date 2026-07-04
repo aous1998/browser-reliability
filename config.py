@@ -50,6 +50,14 @@ else:
     API_KEY = GOOGLE_API_KEY
 JUDGE_MODEL = os.getenv("JUDGE_MODEL", AGENT_MODEL)
 
+# How runs are scored. "string": deterministic normalized-substring check
+# against the task's reference answer (zero evaluator noise -- all measured
+# variance is agent variance). "llm": WebVoyager-style model judge (kept for
+# tasks whose answers cannot be string-matched). Motivated by a real judge
+# error: run 1 of runs_20260704T093033Z.jsonl was scored FAILURE by qwen3:8b
+# although the answer contained the exact reference string.
+JUDGE_MODE = os.getenv("JUDGE_MODE", "string").lower()
+
 # Decoding settings, held fixed across all runs (report, Experimental Setup).
 # The agent temperature is non-zero by design: the run-to-run sampling variation
 # it produces is exactly the phenomenon under study. The judge runs at 0 so the

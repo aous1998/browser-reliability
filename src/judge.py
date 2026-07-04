@@ -1,12 +1,48 @@
-"""Model-based success judge, in the spirit of WebVoyager's automatic judge.
+"""Success judges: deterministic string check (default) and model-based.
 
-Given a task question, a reference answer, and the agent's final answer, ask
-the model for a binary SUCCESS / FAILURE verdict. This is the evaluator that
-decides s_{t,r} for each browser-agent run.
+The evaluator decides s_{t,r} for each browser-agent run. `string_judge` is a
+normalized-substring check against the reference answer -- deterministic, so
+it adds zero noise to the measured run-to-run variance. `judge` is the
+WebVoyager-style LLM verdict, kept for answers that cannot be string-matched;
+it is itself an unreliable instrument when backed by a small model (it scored
+a verbatim-correct answer FAILURE in runs_20260704T093033Z.jsonl).
 """
 from __future__ import annotations
 
+import re
+import unicodedata
+
 import config
+
+# Standalone number words -> digits, so "two meanings" matches reference "2".
+_NUM_WORDS = {w: str(i) for i, w in enumerate(
+    ("zero", "one", "two", "three", "four", "five",
+     "six", "seven", "eight", "nine", "ten"))}
+
+
+def _normalize(text: str) -> str:
+    """Casefold, strip accents, map number words, collapse non-word runs."""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = text.casefold()
+    tokens = re.split(r"[^\w]+", text, flags=re.UNICODE)
+    tokens = [_NUM_WORDS.get(t, t) for t in tokens if t]
+    return " ".join(tokens)
+
+
+def string_judge(reference: str, answer: str, parts: list[str] | None = None) -> int:
+    """Return 1 iff every required reference part appears in the answer.
+
+    `parts` (from the task's optional "reference_parts") lets a reference like
+    a date match order-insensitively; without it the whole reference string
+    must appear. Matching is on normalized text (accents/case/punctuation
+    ignored), so "efimero" matches "efímero".
+    """
+    required = parts if parts else [reference]
+    norm_answer = _normalize(answer or "")
+    if not norm_answer:
+        return 0
+    return int(all(_normalize(p) in norm_answer for p in required))
 
 _PROMPT = """You are evaluating whether a web-browsing agent completed a task.
 
