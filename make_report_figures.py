@@ -23,10 +23,10 @@ from src import metrics
 
 ROOT = Path(__file__).parent
 FIG_DIR = ROOT.parent / "figures"
-# Local-model run: qwen3:8b via Ollama, k=3, single-task slice
-# (Cambridge Dictionary--21; num_ctx fix in place, see config.OLLAMA_NUM_CTX).
+# Local-model run: qwen3:8b via Ollama, k=5, single-task slice, deterministic
+# string judge (Cambridge Dictionary--21; num_ctx fix in place).
 RUN_FILES = [
-    "results/runs_20260704T093033Z.jsonl",
+    "results/runs_20260704T124554Z.jsonl",
 ]
 TASK_LABELS = {
     "Cambridge Dictionary--21": "Cambridge Dictionary\nSpanish translation",
