@@ -31,6 +31,23 @@ RUN_FILES = [
 TASK_LABELS = {
     "Cambridge Dictionary--21": "Cambridge Dictionary\nSpanish translation",
 }
+# URL classification for the trajectory figure. The Cambridge search box
+# intermittently redirects to the blog subdomain, a trap several runs never
+# escaped -- and two judged "successes" answered correctly from there, on pages
+# that verifiably do not contain the answer (parametric recall, not grounding).
+TARGET_URL_MARKER = "ephemeral"
+DICT_HOST = "dictionary.cambridge.org"
+TRAP_HOST = "dictionaryblog.cambridge.org"
+
+
+def classify_step_url(url: str) -> str:
+    """'target' = a dictionary page for the word; 'trap' = blog subdomain;
+    'other' = homepage or anywhere else."""
+    if TRAP_HOST in url:
+        return "trap"
+    if DICT_HOST in url and TARGET_URL_MARKER in url:
+        return "target"
+    return "other"
 TAU = 0.9
 GREEN, ORANGE, RED, GREY = "#2E8B57", "#E8A33D", "#C0392B", "#BDC3C7"
 
@@ -181,6 +198,71 @@ def figure_run_grid(pooled: dict[str, list[int]]) -> None:
     plt.close(fig)
 
 
+def load_run_records() -> list[dict]:
+    records = []
+    for rf in RUN_FILES:
+        for line in (ROOT / rf).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                records.append(json.loads(line))
+    return records
+
+
+def figure_trajectory(records: list[dict]) -> None:
+    """Step-by-step barcode of every run: on the target page vs. elsewhere.
+
+    Each row is one run; each cell one agent step. Dark cells mark steps whose
+    observed URL is the target entry page (TARGET_URL_MARKER), light cells all
+    other pages. Uses the per-step instrumentation in the runs JSONL; runs
+    without it are skipped.
+    """
+    runs = [r for r in records if r.get("steps")]
+    if not runs:
+        print("  (no per-step data; trajectory figure skipped)")
+        return
+    max_steps = max(len(r["steps"]) for r in runs)
+    colors = {"target": GREEN, "trap": ORANGE, "other": GREY}
+    fig, ax = plt.subplots(figsize=(7.2, 0.62 * len(runs) + 2.0))
+
+    for row, r in enumerate(runs):
+        ok = bool(r.get("success"))
+        for col, s in enumerate(r["steps"]):
+            kind = classify_step_url(s.get("url") or "")
+            ax.add_patch(plt.Rectangle((col, row), 0.92, 0.80,
+                         facecolor=colors[kind],
+                         edgecolor="white", linewidth=1.0))
+        mins = (r.get("duration_s") or 0) / 60
+        ax.text(max_steps + 0.4, row + 0.40,
+                f"{'success' if ok else 'failure'}, {mins:.0f} min",
+                va="center", fontsize=9,
+                color=GREEN if ok else RED)
+
+    ax.set_xlim(0, max_steps + 5.2)
+    ax.set_ylim(len(runs) + 2.85, -0.35)
+    ax.set_xticks([c + 0.46 for c in range(0, max_steps, 5)])
+    ax.set_xticklabels(range(0, max_steps, 5), fontsize=9)
+    ax.set_yticks([r + 0.40 for r in range(len(runs))])
+    ax.set_yticklabels([f"run {i + 1}" for i in range(len(runs))], fontsize=9.5)
+    ax.set_xlabel("agent step")
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    ax.tick_params(length=0)
+
+    # legend, one entry per row so the labels never collide
+    entries = [("target", "dictionary page for the word"),
+               ("trap", "blog subdomain (search-box trap; answer not on page)"),
+               ("other", "homepage / elsewhere")]
+    for i, (kind, label) in enumerate(entries):
+        ly = len(runs) + 0.35 + 0.75 * i
+        ax.add_patch(plt.Rectangle((0, ly), 0.92, 0.55,
+                     facecolor=colors[kind], edgecolor="white"))
+        ax.text(1.2, ly + 0.28, label, va="center", fontsize=8.8)
+
+    fig.tight_layout()
+    fig.savefig(FIG_DIR / "trajectory.pdf")
+    fig.savefig(FIG_DIR / "trajectory.png")
+    plt.close(fig)
+
+
 def main() -> None:
     try:
         import sys
@@ -191,8 +273,9 @@ def main() -> None:
     pooled = load_pooled()
     figure_reliability(pooled)
     figure_run_grid(pooled)
+    figure_trajectory(load_run_records())
     print(f"wrote figures to {FIG_DIR}")
-    for f in ("browser_reliability", "run_grid"):
+    for f in ("browser_reliability", "run_grid", "trajectory"):
         print("  -", (FIG_DIR / f).with_suffix(".pdf").name)
 
 
