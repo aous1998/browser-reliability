@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Café Passau — Coffee &amp; Cake by the Inn</title>
+<style>
+  body { font-family: Georgia, serif; margin: 0; color: #2b2b2b; background: #ffffff; }
+  header { background: #4a2c2a; color: #f5e9dc; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px 0; }
+  nav a { color: #f5e9dc; margin-right: 16px; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+  section { margin-bottom: 32px; }
+  .btn { display: inline-block; background: #4a2c2a; color: #fff; padding: 10px 18px;
+         text-decoration: none; border-radius: 4px; border: none; font-size: 1em; }
+  .banner { background: #f5e9dc; padding: 12px 16px; border-left: 4px solid #4a2c2a; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
+  footer { background: #eee; padding: 16px 32px; font-size: 0.9em; }
+  img { max-width: 100%; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Café Passau</h1>
+  <p>Fresh coffee and homemade cake — Monday to Saturday 8:00–20:00,
+     Sundays 9:00–18:00.</p>
+  <nav>
+    <a href="#menu">Menu</a>
+    <a href="#about">About</a>
+    <a href="#visit">Visit</a>
+    <a href="#visit">Reservations</a>
+  </nav>
+</header>
+
+<main>
+  <section id="menu">
+    <h2>Our menu</h2>
+    <table>
+      <tr><th>Item</th><th>Price</th></tr>
+      <tr><td>Espresso</td><td>€2.20</td></tr>
+      <tr><td>Cappuccino</td><td>€3.10</td></tr>
+      <tr><td>Apfelstrudel</td><td>€3.50</td></tr>
+      <tr><td>Sachertorte</td><td>€4.20</td></tr>
+    </table>
+    <p class="banner">
+      This week only: Apfelstrudel for just €3.50 — our sweetest deal!
+    </p>
+    <a class="btn" href="#menu">View full menu</a>
+  </section>
+
+  <section id="about">
+    <h2>About us</h2>
+    <img src="images/cake.png" alt="A slice of homemade Apfelstrudel" width="220">
+    <p>Café Passau has served students and travellers since 1998, right where
+       the Inn meets the old town. Our beans come from a family roastery in
+       Trieste, and every cake is baked in-house each morning.</p>
+    <p>In summer, our little terrace above the river fills up quickly —
+       come early to catch a seat in the sun.</p>
+    <img src="images/terrace.png" alt="Our terrace above the river Inn" width="220">
+  </section>
+
+  <section id="visit">
+    <h2>Visit us</h2>
+    <p>Bräugasse 14, 94032 Passau — a five-minute walk from the Rathausplatz.
+       For reservations, call +49&nbsp;851&nbsp;204040.</p>
+    <h3>Opening hours</h3>
+    <p>Monday to Saturday: 8:00–20:00. Sundays: 9:00–18:00.</p>
+    <button class="btn" onclick="alert('Thank you!')">Order a cake box</button>
+  </section>
+
+  <section id="news">
+    <h2>Newsletter</h2>
+    <form action="" method="get">
+      <label>Email: <input type="email" name="email" placeholder="you@example.com"></label>
+      <button type="submit" class="btn">Subscribe</button>
+    </form>
+    <p>Subscribers get 20% off every Friday.</p>
+  </section>
+</main>
+
+<footer>
+  <p>See you soon at the Inn!</p>
+  <p>© 2026 Café Passau · Bräugasse 14, Passau</p>
+</footer>
+
+</body>
+</html>

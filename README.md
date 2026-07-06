@@ -1,68 +1,69 @@
-# Browser-Agent Reliability Harness
+# Seeded-Defect Web-QA Harness
 
-The browser-agent half of the seminar study *"Reliable or Just Lucky?"* — it
-measures the **run-to-run reliability** of a DOM-based browser agent by running
-each task many times and comparing the leaderboard-style mean success rate
-against the rate of tasks solved *reliably*.
+Can an LLM browser agent do web QA? This harness measures how reliably a
+**local** browser agent (Browser Use + qwen3:8b via Ollama) detects **seeded
+defects** in a static web page, compared with a classical rule-based checker.
 
-It uses [Browser Use](https://github.com/browser-use/browser-use) on a small
-slice of WebVoyager-style tasks. The backbone is configurable via `PROVIDER`:
-**Anthropic** (default, cheapest model Claude Haiku 4.5) or **Gemini** (the
-report's backbone). (The OSWorld desktop-agent half from the report is
-intentionally **not** built here.)
+Ground truth is planted, not judged: we author the pages, so every defect is
+known in advance and scoring is a deterministic pattern match — no LLM judge,
+no live-web drift.
 
-## What it computes
+## Design
 
-For each task `t`, run the agent `k` times → binary outcomes `s_{t,r}`.
+- **`pages/defect.html`** — a small café site seeded with 12 defects in 3
+  classes:
+  - *mechanical* (D01–D05): broken link, dead image, missing alt, form
+    without action, placeholder `#` link — what a linkchecker finds.
+  - *semantic* (D06–D10): mislabeled button, price contradiction, garbled
+    paragraph, absurd copyright year, contradictory opening hours — require
+    understanding meaning.
+  - *visual* (D11–D12): white-on-white text, overlay-covered button —
+    invisible in DOM text, require rendering.
+- **`pages/control.html`** — the same site with every defect fixed; anything
+  reported here is a false positive.
+- **`pages/defects.json`** — the manifest: defect ids, classes, and the regex
+  patterns the scorer uses.
 
-| symbol | meaning |
-|--------|---------|
-| `p_hat_t` | per-task success probability = mean of its `k` outcomes |
-| `p_bar`   | mean success rate (the single number a leaderboard reports) |
-| `C_tau`   | reliably-solved rate = fraction of tasks with `p_hat_t >= tau` |
-| `Delta`   | overstatement gap = `p_bar - C_tau` |
+## Research questions
 
-Tasks are also bucketed into **reliably solved / flaky / reliably failed**.
+1. **Capability:** which defect classes can the agent detect (precision/recall)?
+2. **Reliability:** is detection stable over k identical audits?
+3. **Added value:** what does the agent catch that rules cannot, and vice versa?
 
-## Setup
+## Run
 
 ```bash
 cd browser-reliability
 python -m venv .venv && source .venv/Scripts/activate   # Windows Git Bash
 pip install -r requirements.txt
-playwright install chromium                              # browser for Browser Use
-cp .env.example .env                                     # then add your ANTHROPIC_API_KEY
-```
+# Ollama must be running with the model pulled: ollama pull qwen3:8b
 
-> Browser Use targets Python 3.11–3.13. If install fails on a newer interpreter,
-> create the venv with a 3.12/3.13 Python.
+python -m src.baseline_checker            # rule-based baseline, both pages
+python -m src.run_audit                   # agent: K audits of both pages
+python -m src.run_audit defect.html 1     # pilot: one run, one page
+python -m src.audit_metrics               # summary + report figures
 
-## Run
-
-```bash
-python -m src.run_experiment          # runs all tasks k times, writes results/
-python -m src.plot_results            # histogram of p_hat from the latest summary
-```
-
-Verify the metrics logic without any API key:
-
-```bash
-python tests/test_metrics.py
+python tests/test_score.py                # scorer sanity tests (no model)
 ```
 
 ## Layout
 
 ```
-config.py                  env-driven configuration
-tasks/webvoyager_slice.jsonl  task slice (id, url, question, reference answer)
-src/run_experiment.py      k-times runner + per-run model judge
-src/judge.py               WebVoyager-style SUCCESS/FAILURE judge
-src/metrics.py             p_hat, p_bar, C_tau, Delta, bands, variance
-src/plot_results.py        per-task probability histogram
-results/                   raw runs + summary json/png (gitignored)
+config.py                 env-driven configuration (.env supported)
+pages/                    seeded defect page, control page, defects.json
+src/run_audit.py          serves pages/, runs the agent K times, logs + scores
+src/score.py              deterministic report-to-manifest scorer
+src/baseline_checker.py   classical rule-based checker (the baseline)
+src/audit_metrics.py      aggregates runs -> summary json + figures
+src/local_llm.py          Ollama chat wrapper with qwen3 thinking disabled
+results/                  per-run JSONL + summaries (gitignored)
+tests/                    scorer tests
 ```
 
 ## Knobs (env / `.env`)
 
-`K` runs per task · `TAU` reliability threshold (0.9) · `MAX_STEPS` step budget ·
-`GEMINI_MODEL` · `HEADLESS`.
+`OLLAMA_MODEL` (qwen3:8b) · `OLLAMA_NUM_CTX` (16384 — Ollama's ~4k default
+silently truncates Browser Use's prompts) · `OLLAMA_LLM_TIMEOUT_S` (300) ·
+`K` audits per page · `MAX_STEPS` step budget per audit (15 recommended) ·
+`TEMPERATURE` (1.0, non-zero by design: run-to-run variation is measured) ·
+`HEADLESS`.

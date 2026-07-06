@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Café Passau — Coffee &amp; Cake by the Inn</title>
+<style>
+  body { font-family: Georgia, serif; margin: 0; color: #2b2b2b; background: #ffffff; }
+  header { background: #4a2c2a; color: #f5e9dc; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px 0; }
+  nav a { color: #f5e9dc; margin-right: 16px; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+  section { margin-bottom: 32px; }
+  .btn { display: inline-block; background: #4a2c2a; color: #fff; padding: 10px 18px;
+         text-decoration: none; border-radius: 4px; border: none; font-size: 1em; }
+  .banner { background: #f5e9dc; padding: 12px 16px; border-left: 4px solid #4a2c2a; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
+  footer { background: #eee; padding: 16px 32px; font-size: 0.9em; }
+  img { max-width: 100%; }
+  .order-wrap { position: relative; display: inline-block; }
+  /* D12: decorative overlay covers the order button, making it unclickable */
+  .order-overlay { position: absolute; inset: 0; z-index: 5; background: rgba(255,255,255,0.01); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Café Passau</h1>
+  <!-- D10 (part 1): header says open daily -->
+  <p>Fresh coffee and homemade cake — open daily 8:00–20:00.</p>
+  <nav>
+    <a href="#menu">Menu</a>
+    <a href="#about">About</a>
+    <a href="#visit">Visit</a>
+    <!-- D05: link goes nowhere but is presented as a real page -->
+    <a href="#">Reservations</a>
+    <!-- D01: target page does not exist (404) -->
+    <a href="menu-archive.html">Last year's menu</a>
+  </nav>
+</header>
+
+<main>
+  <section id="menu">
+    <h2>Our menu</h2>
+    <table>
+      <tr><th>Item</th><th>Price</th></tr>
+      <tr><td>Espresso</td><td>€2.20</td></tr>
+      <tr><td>Cappuccino</td><td>€3.10</td></tr>
+      <!-- D07 (part 1): strudel price here is €3.50 -->
+      <tr><td>Apfelstrudel</td><td>€3.50</td></tr>
+      <tr><td>Sachertorte</td><td>€4.20</td></tr>
+    </table>
+    <p class="banner">
+      <!-- D07 (part 2): same strudel advertised at a different price -->
+      This week only: Apfelstrudel for just €4.80 — our sweetest deal!
+    </p>
+    <!-- D06: label says menu, target is the opening-hours section -->
+    <a class="btn" href="#visit">View full menu</a>
+  </section>
+
+  <section id="about">
+    <h2>About us</h2>
+    <!-- D03: image exists but has no alt text -->
+    <img src="images/cake.png" width="220">
+    <p>Café Passau has served students and travellers since 1998, right where
+       the Inn meets the old town. Our beans come from a family roastery in
+       Trieste, and every cake is baked in-house each morning.</p>
+    <!-- D08: garbled placeholder text left in production -->
+    <p>Ihr asdkfj qwelrju zzxcmv nbqpwo eirutj ghdksl foeirw mcnvbz
+       alskdj fhgqwe rpoiuz.</p>
+    <!-- D02: image file does not exist -->
+    <img src="images/terrace.jpg" alt="Our terrace above the river Inn" width="220">
+  </section>
+
+  <section id="visit">
+    <h2>Visit us</h2>
+    <p>Bräugasse 14, 94032 Passau — a five-minute walk from the Rathausplatz.</p>
+    <h3>Opening hours</h3>
+    <!-- D10 is split between header and footer; this section is consistent -->
+    <p>Monday to Saturday: 8:00–20:00. Sundays: 9:00–18:00.</p>
+    <div class="order-wrap">
+      <!-- D12: this button is covered by the overlay div and cannot be clicked -->
+      <button class="btn" onclick="alert('Thank you!')">Order a cake box</button>
+      <div class="order-overlay"></div>
+    </div>
+  </section>
+
+  <section id="news">
+    <h2>Newsletter</h2>
+    <!-- D04: form has no action and the button submits nothing -->
+    <form>
+      <label>Email: <input type="email" name="email" placeholder="you@example.com"></label>
+      <button type="button" class="btn">Subscribe</button>
+    </form>
+    <!-- D11: white text on white background, invisible to visitors -->
+    <p style="color:#ffffff; background:#ffffff;">Subscribers get 20% off every
+       Friday. This offer is our best-kept secret.</p>
+  </section>
+</main>
+
+<footer>
+  <!-- D10 (part 2): footer contradicts the header's "open daily" -->
+  <p>We are closed on Sundays. See you during the week!</p>
+  <!-- D09: absurd copyright year -->
+  <p>© 1875 Café Passau · Bräugasse 14, Passau</p>
+</footer>
+
+</body>
+</html>

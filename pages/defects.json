@@ -1,0 +1,79 @@
+{
+  "page": "defect.html",
+  "defects": [
+    {
+      "id": "D01",
+      "class": "mechanical",
+      "description": "Nav link 'Last year's menu' points to menu-archive.html, which does not exist (404).",
+      "all": ["menu.?archive|last year", "404|broken|not found|missing|dead|does ?n.t (exist|work)|doesn.t (exist|work)|invalid|error|no such"]
+    },
+    {
+      "id": "D02",
+      "class": "mechanical",
+      "description": "Image images/terrace.jpg is referenced but the file does not exist (broken image).",
+      "all": ["terrace|image|img|photo|picture", "broken|missing|not found|not load|fail|dead|404|does ?n.t (load|exist|display)|doesn.t (load|exist|display)|unavailable|cannot be (loaded|displayed)"],
+      "not": ["\\balt\\b"]
+    },
+    {
+      "id": "D03",
+      "class": "mechanical",
+      "description": "The cake image has no alt text.",
+      "all": ["image|img|photo|picture|cake", "\\balt\\b"]
+    },
+    {
+      "id": "D04",
+      "class": "mechanical",
+      "description": "Newsletter form has no action and its button is type=button: subscribing does nothing.",
+      "all": ["form|newsletter|subscribe|email", "no action|action attribute|does ?n.t (work|submit|do)|doesn.t (work|submit|do)|not (work|submit|functional)|non.?functional|broken|missing.{0,20}action|no (submit|handler)|nothing happens|type=.?button|not wired|no endpoint"]
+    },
+    {
+      "id": "D05",
+      "class": "mechanical",
+      "description": "Nav link 'Reservations' has href='#' and leads nowhere.",
+      "all": ["reservation", "#|nowhere|placeholder|empty|dead|broken|no (destination|target|page|link)|does ?n.t (work|go|lead|link)|doesn.t (work|go|lead|link)|not (work|link|functional)|invalid|missing|same page|links? to nothing"]
+    },
+    {
+      "id": "D06",
+      "class": "semantic",
+      "description": "Button labeled 'View full menu' links to the #visit (opening hours) section, not the menu.",
+      "all": ["view full menu|menu (button|link)|full menu", "visit|hours|wrong|incorrect|mismatch|does ?n.t|doesn.t|misleading|leads|points|goes|links? to|anchor"]
+    },
+    {
+      "id": "D07",
+      "class": "semantic",
+      "description": "Apfelstrudel priced €3.50 in the menu but €4.80 in the promo banner.",
+      "all": ["strudel|price|3\\.50|4\\.80", "contradict|inconsisten|different|mismatch|conflict|discrepan|two (different )?prices|does ?n.t match|doesn.t match|not match|higher|3\\.50.{0,40}4\\.80|4\\.80.{0,40}3\\.50"]
+    },
+    {
+      "id": "D08",
+      "class": "semantic",
+      "description": "The About section contains a garbled keyboard-mash paragraph.",
+      "all": ["garbled|gibberish|nonsense|nonsensical|random (characters|letters|text|words)|placeholder (text|paragraph|copy)|unreadable (text|paragraph)|corrupted (text|paragraph)|meaningless|lorem|scrambled|jumbled|asdk|unintelligible|not (real|actual) (text|words)|broken text"]
+    },
+    {
+      "id": "D09",
+      "class": "semantic",
+      "description": "Footer copyright year is 1875, which is absurd for a café founded in 1998.",
+      "all": ["1875|copyright|©", "1875|wrong|incorrect|outdated|old|absurd|impossible|error|typo|should be|inconsisten|before"]
+    },
+    {
+      "id": "D10",
+      "class": "semantic",
+      "description": "Header says 'open daily', footer says 'closed on Sundays': opening hours contradict.",
+      "all": ["hours|sunday|daily|opening", "contradict|inconsisten|conflict|mismatch|discrepan|differ|not match|closed.{0,60}open|open.{0,60}closed"]
+    },
+    {
+      "id": "D11",
+      "class": "visual",
+      "description": "The newsletter discount paragraph is white text on white background (invisible).",
+      "all": ["white|invisible|hidden|unreadable|contrast|cannot (be )?seen|can.t (be )?see", "text|paragraph|subscriber|secret|20"]
+    },
+    {
+      "id": "D12",
+      "class": "visual",
+      "description": "The 'Order a cake box' button is covered by an overlay div and cannot be clicked.",
+      "all": ["order|cake box|button", "overlap|cover|block|obscur|unclickable|cannot (be )?click|can.t (be )?click|not clickable|unresponsive|does ?n.t (respond|click)|doesn.t (respond|click)|intercept"],
+      "not": ["subscribe|newsletter|form|menu"]
+    }
+  ]
+}
