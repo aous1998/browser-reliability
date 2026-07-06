@@ -57,9 +57,12 @@ def summarize(runs_path: Path) -> dict:
             "baseline": base,
         }
     overall_per_run = [run["n_detected"] / len(defects) for run in agent_runs]
-    precisions = [run["n_claims"] and
-                  (run["n_claims"] - len(run["false_positive_lines"])) / run["n_claims"]
-                  for run in agent_runs]
+    # Precision is undefined (None) for a run that made no claims at all.
+    precisions = [
+        (run["n_claims"] - len(run["false_positive_lines"])) / run["n_claims"]
+        if run["n_claims"] else None
+        for run in agent_runs
+    ]
 
     summary = {
         "runs_file": runs_path.name,
@@ -70,7 +73,13 @@ def summarize(runs_path: Path) -> dict:
         "overall_recall_per_run": overall_per_run,
         "overall_recall_mean": mean(overall_per_run) if overall_per_run else 0.0,
         "precision_per_run": precisions,
-        "precision_mean": mean(p for p in precisions if p is not None) if precisions else None,
+        "precision_mean": (mean(p for p in precisions if p is not None)
+                           if any(p is not None for p in precisions) else None),
+        "union_recall_per_run": [
+            sum(1 for did in run if run[did] or baseline["defect.html"]["detected"][did])
+            / len(defects)
+            for run in (r["detected"] for r in agent_runs)
+        ],
         "control_claims_per_run": [r["n_claims"] for r in control_runs],
         "control_false_positive_lines": [r["false_positive_lines"] for r in control_runs],
         "baseline_overall_recall": baseline["defect.html"]["n_detected"] / len(defects),
